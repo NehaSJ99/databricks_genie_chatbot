@@ -25,6 +25,7 @@ def fetch_query_result(conversation_id: str, message_id: str, attachment_id: str
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     data = resp.json()
+    print("-----------------------------------------------------")
     print("Genie Query Result:", data)  # Debug log
 
     # Check for tabular results (data_array + schema)
@@ -108,6 +109,26 @@ def poll_message(conversation_id: str, message_id: str, timeout=60, poll_interva
             return f"Genie message status: {status}"
         time.sleep(poll_interval)
     return "Timeout waiting for Genie response."
+
+def get_generated_sql(conversation_id: str, message_id: str):
+    """
+    Retrieves the generated SQL from a Genie conversation message.
+    """
+    url = f"{api_base}/conversations/{conversation_id}/messages/{message_id}"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    data = resp.json()
+    # Try to extract SQL from attachments or content
+    if "attachments" in data and data["attachments"]:
+        for att in data["attachments"]:
+            # SQL may be in 'sql' or in 'text'->'content'
+            if att.get("query"):
+                return att["query"]
+            if att.get("text", {}).get("content"):
+                return att["text"]["content"]
+    if "content" in data:
+        return data["content"]
+    return "No SQL found."
 
 class GenieConversation:
     def __init__(self):
